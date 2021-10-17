@@ -292,14 +292,120 @@ def createTiledFloor(dim):
     return bs.Shape(vertFinal, indexFinal)
 
 # TAREA3: Implementa la función "createHouse" que crea un objeto que representa una casa
-# y devuelve un nodo de un grafo de escena (un objeto sg.SceneGraphNode) que representa toda la geometría y las texturas
+# y devuelve un nodo de un grafo de escena (un objeto sg.SceneGraphNode) que representa toda
+# la geometría y las texturas
 # Esta función recibe como parámetro el pipeline que se usa para las texturas (texPipeline)
 
 def createHouse(pipeline):
-    pass
+
+    quadTechoShape = createGPUShape(pipeline, bs.createTextureQuad(1.0, 1.0))
+    quadTechoShape.texture = es.textureSimpleSetup(
+        getAssetPath("roof1.jpg"), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
+    glGenerateMipmap(GL_TEXTURE_2D)
+
+    tejado1Node = sg.SceneGraphNode('tejado1')
+    tejado1Node.transform = tr.matmul([tr.translate(0, 1.05, -0.45),
+                                        tr.rotationX(-5*np.pi/8)])
+    tejado1Node.childs += [quadTechoShape]
+
+    tejado2Node = sg.SceneGraphNode('tejado2')
+    tejado2Node.transform = tr.matmul([tr.translate(0, 1.05, 0.45),
+                                        tr.rotationX(5*np.pi/8)])
+    tejado2Node.childs += [quadTechoShape]
+
+    techoNode = sg.SceneGraphNode('techo')
+    techoNode.transform = tr.identity()
+    techoNode.childs += [tejado1Node,
+                        tejado2Node]
+
+    quadParedShape = createGPUShape(pipeline, bs.createTextureQuad(1.0, 1.0))
+    quadParedShape.texture = es.textureSimpleSetup(
+        getAssetPath("wall3.jpg"), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
+    glGenerateMipmap(GL_TEXTURE_2D)
+
+    pared1Node = sg.SceneGraphNode('pared1')
+    pared1Node.transform = tr.matmul([tr.translate(0, 0.5, 0.5),
+                                    tr.rotationZ(np.pi/2)])
+    pared1Node.childs += [quadParedShape]
+
+    pared2Node = sg.SceneGraphNode('pared2')
+    pared2Node.transform = tr.matmul([tr.translate(0, 0.5, -0.5),
+                                    tr.rotationZ(np.pi/2)])
+    pared2Node.childs += [quadParedShape]
+
+    pared3Node = sg.SceneGraphNode('pared3')
+    pared3Node.transform = tr.matmul([tr.translate(0.5, 0.5, 0),
+                                    tr.rotationY(np.pi/2),
+                                    tr.rotationZ(np.pi/2)])
+    pared3Node.childs += [quadParedShape]
+
+    pared4Node = sg.SceneGraphNode('pared4')
+    pared4Node.transform = tr.matmul([tr.translate(-0.5, 0.5, 0),
+                                    tr.rotationY(np.pi/2),
+                                    tr.rotationZ(np.pi/2)])
+    pared4Node.childs += [quadParedShape]
+
+    cuerpoNode = sg.SceneGraphNode('cuerpo')
+    cuerpoNode.transform = tr.identity()
+    cuerpoNode.childs += [pared1Node,
+                            pared2Node,
+                            pared3Node,
+                            pared4Node]
+
+    casaNode = sg.SceneGraphNode('casa')
+    casaNode.transform = tr.matmul([tr.uniformScale(0.8)])
+    casaNode.childs += [techoNode,
+                        cuerpoNode]
+
+    casa1Node = sg.SceneGraphNode('casa1')
+    casa1Node.transform = tr.matmul([tr.translate(3.5, 0, 0)])
+    casa1Node.childs += [casaNode]
+
+    casa2Node = sg.SceneGraphNode('casa2')
+    casa2Node.transform = tr.identity()
+    casa2Node.childs += [casaNode]
+
+    casa3Node = sg.SceneGraphNode('casa3')
+    casa3Node.transform = tr.identity()
+    casa3Node.childs += [casaNode]
+
+    casa4Node = sg.SceneGraphNode('casa4')
+    casa4Node.transform = tr.identity()
+    casa4Node.childs += [casaNode]
+
+    casa5Node = sg.SceneGraphNode('casa5')
+    casa5Node.transform = tr.identity()
+    casa5Node.childs += [casaNode]
+
+    casa6Node = sg.SceneGraphNode('casa6')
+    casa6Node.transform = tr.identity()
+    casa6Node.childs += [casaNode]
+
+    casa7Node = sg.SceneGraphNode('casa7')
+    casa7Node.transform = tr.identity()
+    casa7Node.childs += [casaNode]
+
+    casa8Node = sg.SceneGraphNode('casa8')
+    casa8Node.transform = tr.identity()
+    casa8Node.childs += [casaNode]
+
+    casasNode = sg.SceneGraphNode('casas')
+    casasNode.transform = tr.identity()
+    casasNode.childs += [casa1Node,
+                        casa2Node,
+                        casa3Node,
+                        casa4Node,
+                        casa5Node,
+                        casa6Node,
+                        casa7Node,
+                        casa8Node]
+
+    return casasNode
+
 
 # TAREA3: Implementa la función "createWall" que crea un objeto que representa un muro
-# y devuelve un nodo de un grafo de escena (un objeto sg.SceneGraphNode) que representa toda la geometría y las texturas
+# y devuelve un nodo de un grafo de escena (un objeto sg.SceneGraphNode) que representa toda
+# la geometría y las texturas
 # Esta función recibe como parámetro el pipeline que se usa para las texturas (texPipeline)
 
 def createWall(pipeline):
@@ -453,9 +559,10 @@ if __name__ == "__main__":
 
     #NOTA: Aqui creas un objeto con tu escena
     dibujo = createStaticScene(texPipeline)
-    car =createCarScene(lightPipeline)
+    car = createCarScene(lightPipeline)
+    houses = createHouse(texPipeline)
 
-    setPlot(texPipeline, axisPipeline,lightPipeline)
+    setPlot(texPipeline, axisPipeline, lightPipeline)
 
     perfMonitor = pm.PerformanceMonitor(glfw.get_time(), 0.5)
 
@@ -494,7 +601,8 @@ if __name__ == "__main__":
         glUseProgram(lightPipeline.shaderProgram)
         sg.drawSceneGraphNode(car, lightPipeline, "model")
 
-        
+        glUseProgram(texPipeline.shaderProgram)
+        sg.drawSceneGraphNode(houses, texPipeline, "model")
 
         # Once the render is done, buffers are swapped, showing only the complete scene.
         glfw.swap_buffers(window)
@@ -502,6 +610,7 @@ if __name__ == "__main__":
     # freeing GPU memory
     gpuAxis.clear()
     dibujo.clear()
+    houses.clear()
     
 
     glfw.terminate()
