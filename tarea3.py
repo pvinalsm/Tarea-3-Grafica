@@ -25,10 +25,16 @@ class Controller:
     def __init__(self):
         self.fillPolygon = True
         self.showAxis = True
-        self.viewPos = np.array([2,0.1,0])
-        self.at = np.array([0,0,80])
+        self.viewPos = np.array([2,0.8,8.3])   #initial position for the camera 
+        self.at = np.array([2,1,-80])
         self.camUp = np.array([0, 1, 0])
         self.distance = 20
+        self.xRotation = 0   
+        self.zPosition = 0   #initial position for the car
+        self.xRotationSpeed = 0
+        self.zSpeed = 0   #initial speed for the car and camera
+        self.zAc = 0.00001   #acceleration and deceleration for the car and camera speed
+        self.xAc = np.pi/1000000   #acceleration and deceleration for the car and camera rotation 
 
 
 controller = Controller()
@@ -88,40 +94,27 @@ def on_key(window, key, scancode, action, mods):
     if key == glfw.KEY_SPACE:
         controller.fillPolygon = not controller.fillPolygon
 
-    elif key == glfw.KEY_LEFT_CONTROL:
-        controller.showAxis = not controller.showAxis
-
     elif key == glfw.KEY_ESCAPE:
         glfw.set_window_should_close(window, True)
     
-    elif key == glfw.KEY_1:
-        controller.viewPos = np.array([controller.distance,controller.distance,controller.distance]) #Vista diagonal 1
-        controller.camUp = np.array([0,1,0])
-    
-    elif key == glfw.KEY_2:
-        controller.viewPos = np.array([0,0,controller.distance]) #Vista frontal
-        controller.camUp = np.array([0,1,0])
+    #if we press W key, the car and the camera will go forward 
+    elif key == glfw.KEY_W:
+        controller.zSpeed += (controller.zAc)
+        controller.viewPos -= np.array([0,0,controller.zSpeed])
 
-    elif key == glfw.KEY_3:
-        controller.viewPos = np.array([controller.distance,0,controller.distance]) #Vista lateral
-        controller.camUp = np.array([0,1,0])
+    #if we press S key, the car and the camera will go back 
+    elif key == glfw.KEY_S:
+        controller.zSpeed -= (controller.zAc)
+        controller.viewPos -= np.array([0,0,controller.zSpeed])
 
-    elif key == glfw.KEY_4:
-        controller.viewPos = np.array([0,controller.distance,0]) #Vista superior
-        controller.camUp = np.array([1,0,0])
-    
-    elif key == glfw.KEY_5:
-        controller.viewPos = np.array([controller.distance,controller.distance,-controller.distance]) #Vista diagonal 2
-        controller.camUp = np.array([0,1,0])
-    
-    elif key == glfw.KEY_6:
-        controller.viewPos = np.array([-controller.distance,controller.distance,-controller.distance]) #Vista diagonal 2
-        controller.camUp = np.array([0,1,0])
-    
-    elif key == glfw.KEY_7:
-        controller.viewPos = np.array([-controller.distance,controller.distance,controller.distance]) #Vista diagonal 2
-        controller.camUp = np.array([0,1,0])
-    
+    #if we press D key, the car and the camera will turn right
+    elif key == glfw.KEY_D:
+        controller.xRotationSpeed += (controller.xAc)
+
+    #if we press A key, the car and the camera will turn left
+    elif key == glfw.KEY_A:
+        controller.xRotationSpeed -= (controller.xAc)
+
     else:
         print('Unknown key')
 
@@ -291,106 +284,131 @@ def createTiledFloor(dim):
 
     return bs.Shape(vertFinal, indexFinal)
 
-# TAREA3: Implementa la función "createHouse" que crea un objeto que representa una casa
-# y devuelve un nodo de un grafo de escena (un objeto sg.SceneGraphNode) que representa toda
-# la geometría y las texturas
-# Esta función recibe como parámetro el pipeline que se usa para las texturas (texPipeline)
 
+#Create an object that represents 8 houses, and return a scene graph node that represents 
+#all geometry and textures
+#Receives the texPipeline as parameter 
 def createHouse(pipeline):
-
+    #create a quad that represents a roof texture
     quadTechoShape = createGPUShape(pipeline, bs.createTextureQuad(1.0, 1.0))
     quadTechoShape.texture = es.textureSimpleSetup(
         getAssetPath("roof4.jpg"), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
     glGenerateMipmap(GL_TEXTURE_2D)
 
+    #create a part of a roof
     tejado1Node = sg.SceneGraphNode('tejado1')
     tejado1Node.transform = tr.matmul([tr.translate(0, 1.05, -0.45),
                                         tr.rotationX(-5*np.pi/8)])
     tejado1Node.childs += [quadTechoShape]
 
+    #create a part of a roof
     tejado2Node = sg.SceneGraphNode('tejado2')
     tejado2Node.transform = tr.matmul([tr.translate(0, 1.05, 0.45),
                                         tr.rotationX(5*np.pi/8)])
     tejado2Node.childs += [quadTechoShape]
 
+    #create the entire roof
     techoNode = sg.SceneGraphNode('techo')
     techoNode.transform = tr.identity()
     techoNode.childs += [tejado1Node,
                         tejado2Node]
 
+    #create a quad that represents a wall texture
     quadParedShape = createGPUShape(pipeline, bs.createTextureQuad(1.0, 1.0))
     quadParedShape.texture = es.textureSimpleSetup(
         getAssetPath("wall3.jpg"), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
     glGenerateMipmap(GL_TEXTURE_2D)
 
+    #create a single wall
     pared1Node = sg.SceneGraphNode('pared1')
     pared1Node.transform = tr.matmul([tr.translate(0, 0.5, 0.5),
-                                    tr.rotationZ(np.pi/2)])
+                                    ])
     pared1Node.childs += [quadParedShape]
 
+    #create a single wall
     pared2Node = sg.SceneGraphNode('pared2')
     pared2Node.transform = tr.matmul([tr.translate(0, 0.5, -0.5),
-                                    tr.rotationZ(np.pi/2)])
+                                    ])
     pared2Node.childs += [quadParedShape]
 
+    #create a single wall
     pared3Node = sg.SceneGraphNode('pared3')
     pared3Node.transform = tr.matmul([tr.translate(0.5, 0.5, 0),
                                     tr.rotationY(np.pi/2),
-                                    tr.rotationZ(np.pi/2)])
+                                    ])
     pared3Node.childs += [quadParedShape]
 
+    #create a single wall
     pared4Node = sg.SceneGraphNode('pared4')
     pared4Node.transform = tr.matmul([tr.translate(-0.5, 0.5, 0),
                                     tr.rotationY(np.pi/2),
-                                    tr.rotationZ(np.pi/2)])
+                                    ])
     pared4Node.childs += [quadParedShape]
 
+    #create a single wall
+    pared5Node = sg.SceneGraphNode('pared5')
+    pared5Node.transform = tr.matmul([tr.translate(0,1,0),
+                                        tr.rotationX(np.pi/2)])
+    pared5Node.childs += [quadParedShape]
+
+    #node that agroups the 5 walls
     cuerpoNode = sg.SceneGraphNode('cuerpo')
     cuerpoNode.transform = tr.identity()
     cuerpoNode.childs += [pared1Node,
                             pared2Node,
                             pared3Node,
-                            pared4Node]
+                            pared4Node,
+                            pared5Node]
 
+    #create an entire house with walls and roof
     casaNode = sg.SceneGraphNode('casa')
     casaNode.transform = tr.matmul([tr.uniformScale(0.8)])
     casaNode.childs += [techoNode,
                         cuerpoNode]
 
+    #node with one house in a specific position
     casa1Node = sg.SceneGraphNode('casa1')
     casa1Node.transform = tr.matmul([tr.translate(3.5, 0, 0)])
     casa1Node.childs += [casaNode]
 
+    #node with one house in a specific position
     casa2Node = sg.SceneGraphNode('casa2')
     casa2Node.transform = tr.matmul([tr.translate(3.5, 0, -4)])
     casa2Node.childs += [casaNode]
 
+    #node with one house in a specific position
     casa3Node = sg.SceneGraphNode('casa3')
     casa3Node.transform = tr.matmul([tr.translate(3.5, 0, 4)])
     casa3Node.childs += [casaNode]
 
+    #node with one house in a specific position
     casa4Node = sg.SceneGraphNode('casa4')
     casa4Node.transform = tr.matmul([tr.translate(-3.5, 0, 0)])
     casa4Node.childs += [casaNode]
 
+    #node with one house in a specific position
     casa5Node = sg.SceneGraphNode('casa5')
     casa5Node.transform = tr.matmul([tr.translate(-3.5, 0, -4)])
     casa5Node.childs += [casaNode]
 
+    #node with one house in a specific position
     casa6Node = sg.SceneGraphNode('casa6')
     casa6Node.transform = tr.matmul([tr.translate(-3.5, 0, 4)])
     casa6Node.childs += [casaNode]
 
+    #node with one house in a specific position
     casa7Node = sg.SceneGraphNode('casa7')
     casa7Node.transform = tr.matmul([tr.translate(0, 0, 9),
                                     tr.rotationY(np.pi/2)])
     casa7Node.childs += [casaNode]
 
+    #node with one house in a specific position
     casa8Node = sg.SceneGraphNode('casa8')
     casa8Node.transform = tr.matmul([tr.translate(0, 0, -8),
                                     tr.rotationY(np.pi/2)])
     casa8Node.childs += [casaNode]
 
+    #node that agroups the 8 houses
     casasNode = sg.SceneGraphNode('casas')
     casasNode.transform = tr.identity()
     casasNode.childs += [casa1Node,
@@ -402,7 +420,7 @@ def createHouse(pipeline):
                         casa7Node,
                         casa8Node]
 
-    return casasNode
+    return casasNode   #return the node with the 8 houses
 
 
 # TAREA3: Implementa la función "createWall" que crea un objeto que representa un muro
@@ -410,43 +428,54 @@ def createHouse(pipeline):
 # la geometría y las texturas
 # Esta función recibe como parámetro el pipeline que se usa para las texturas (texPipeline)
 
+
+#Create an object that represents 4 containment walls, and return a scene graph node that represents 
+#all geometry and textures
+#Receives the texPipeline as parameter 
 def createWall(pipeline):
-    
-    quadMurallaShape = createGPUShape(pipeline, bs.createTextureQuad(1.0, 1.0))
+    #create a quad that represents a wall texture
+    quadMurallaShape = createGPUShape(pipeline, bs.createTextureQuad(10, 1))
     quadMurallaShape.texture = es.textureSimpleSetup(
         getAssetPath("wall1.jpg"), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
     glGenerateMipmap(GL_TEXTURE_2D)  
 
+    #create a quad that represents a wall texture 
     quadMuralla2Shape = createGPUShape(pipeline, bs.createTextureQuad(0.6, 0.6))
     quadMuralla2Shape.texture = es.textureSimpleSetup(
         getAssetPath("wall1.jpg"), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
     glGenerateMipmap(GL_TEXTURE_2D)  
 
+    #create one wall face
     cara1Node = sg.SceneGraphNode('cara1Node')
     cara1Node.transform = tr.matmul([tr.translate(0, 1, -0.5)])
     cara1Node.childs += [quadMurallaShape]
 
+    #create one wall face
     cara2Node = sg.SceneGraphNode('cara2Node')
     cara2Node.transform = tr.matmul([tr.translate(0, 1, 0.5)])
     cara2Node.childs += [quadMurallaShape]
 
+    #create one wall face
     cara3Node = sg.SceneGraphNode('cara3Node')
     cara3Node.transform = tr.matmul([tr.translate(0.5, 1, 0),
                                     tr.rotationY(np.pi/2)])
     cara3Node.childs += [quadMurallaShape]
 
+    #create one wall face
     cara4Node = sg.SceneGraphNode('cara4Node')
     cara4Node.transform = tr.matmul([tr.translate(-0.5, 1, 0),
                                     tr.rotationY(np.pi/2)])
     cara4Node.childs += [quadMurallaShape]
 
+    #create one wall face
     cara5Node = sg.SceneGraphNode('cara5Node')
     cara5Node.transform = tr.matmul([tr.translate(0, 1.5, 0),
                                     tr.rotationX(np.pi/2)])
     cara5Node.childs += [quadMuralla2Shape]
 
+    #node that agroups 5 walls and represent an entire containment wall
     muro1Node = sg.SceneGraphNode('muro1Node')
-    muro1Node.transform = tr.matmul([tr.translate(-2.5, -0.25, 0.5),
+    muro1Node.transform = tr.matmul([tr.translate(-2.6, -0.2, 0.5),
                                     tr.scale(0.1, 0.25, 10)])
     muro1Node.childs += [cara1Node,
                         cara2Node,
@@ -454,8 +483,9 @@ def createWall(pipeline):
                         cara4Node,
                         cara5Node]
 
+    #node that agroups 5 walls and represent an entire containment wall
     muro2Node = sg.SceneGraphNode('muro2Node')
-    muro2Node.transform = tr.matmul([tr.translate(-1.5, -0.25, 0.5),
+    muro2Node.transform = tr.matmul([tr.translate(-1.4, -0.2, 0.5),
                                     tr.scale(0.1, 0.25, 10)])
     muro2Node.childs += [cara1Node,
                         cara2Node,
@@ -463,8 +493,9 @@ def createWall(pipeline):
                         cara4Node,
                         cara5Node]
 
+    #node that agroups 5 walls and represent an entire containment wall
     muro3Node = sg.SceneGraphNode('muro3Node')
-    muro3Node.transform = tr.matmul([tr.translate(1.5, -0.25, 0.5),
+    muro3Node.transform = tr.matmul([tr.translate(1.4, -0.2, 0.5),
                                     tr.scale(0.1, 0.25, 10)])
     muro3Node.childs += [cara1Node,
                         cara2Node,
@@ -472,8 +503,9 @@ def createWall(pipeline):
                         cara4Node,
                         cara5Node]
 
+    #node that agroups 5 walls and represent an entire containment wall
     muro4Node = sg.SceneGraphNode('muro4Node')
-    muro4Node.transform = tr.matmul([tr.translate(2.5, -0.25, 0.5),
+    muro4Node.transform = tr.matmul([tr.translate(2.6, -0.2, 0.5),
                                    tr.scale(0.1, 0.25, 10)])
     muro4Node.childs += [cara1Node,
                         cara2Node,
@@ -481,15 +513,16 @@ def createWall(pipeline):
                         cara4Node,
                         cara5Node]
     
+    #node that agroups the 4 containment walls
     murosNode = sg.SceneGraphNode('murosNode')
     murosNode.transform = tr.identity()
     murosNode.childs += [muro1Node,
                         muro2Node,
                         muro3Node,
                         muro4Node]
-    return murosNode
+    return murosNode   #return the node with the 4 containment walls
 
-# TAREA3: Esta función crea un grafo de escena especial para el auto.
+#create a scene graph por an entire car
 def createCarScene(pipeline):
     chasis = createOFFShape(pipeline, 'alfa2.off', 1.0, 0.0, 0.0)
     wheel = createOFFShape(pipeline, 'wheel.off', 0.0, 0.0, 0.0)
@@ -531,10 +564,8 @@ def createCarScene(pipeline):
 
     return scene
 
-# TAREA3: Esta función crea toda la escena estática y texturada de esta aplicación.
-# Por ahora ya están implementadas: la pista y el terreno
-# En esta función debes incorporar las casas y muros alrededor de la pista
 
+#create the textured static scene for the track and the ground
 def createStaticScene(pipeline):
 
     roadBaseShape = createGPUShape(pipeline, bs.createTextureQuad(1.0, 1.0))
@@ -602,7 +633,7 @@ if __name__ == "__main__":
 
     width = 800
     height = 800
-    title = "Tarea 2"
+    title = "Tarea 3"
     window = glfw.create_window(width, height, title, None, None)
 
     if not window:
@@ -635,7 +666,7 @@ if __name__ == "__main__":
     axisPipeline.setupVAO(gpuAxis)
     gpuAxis.fillBuffers(cpuAxis.vertices, cpuAxis.indices, GL_STATIC_DRAW)
 
-    #NOTA: Aqui creas un objeto con tu escena
+    # Here we create an object with the scene
     dibujo = createStaticScene(texPipeline)
     car = createCarScene(lightPipeline)
     houses = createHouse(texPipeline)
@@ -655,10 +686,7 @@ if __name__ == "__main__":
         glfw.set_window_title(window, title + str(perfMonitor))
 
         # Using GLFW to check for input events
-        glfw.poll_events()
-
-        # Clearing the screen in both, color and depth
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glfw.poll_events() 
 
         # Filling or not the shapes depending on the controller state
         if (controller.fillPolygon):
@@ -666,6 +694,45 @@ if __name__ == "__main__":
         else:
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
+        # Control the car and camera to move forward
+        if glfw.get_key(window, glfw.KEY_W) == glfw.PRESS:
+            controller.zSpeed += (controller.zAc)
+            controller.viewPos[2] -= (controller.zSpeed)
+        else:
+            if(controller.zSpeed > 0):
+                controller.zSpeed = max(controller.zSpeed-controller.zAc, 0)
+                controller.viewPos[2] = max(controller.viewPos[2]-controller.zSpeed, 0)
+                
+        # Control the car an camera to move back
+        if glfw.get_key(window, glfw.KEY_S) == glfw.PRESS:
+            controller.zSpeed -= (controller.zAc)
+            controller.viewPos[2] -= (controller.zSpeed)
+        else:
+            if(controller.zSpeed < 0):
+                controller.zSpeed = min(controller.zSpeed+controller.zAc, 0)
+                controller.viewPos[2] = max(controller.viewPos[2]-controller.zSpeed, 0)
+
+        # A try to make the car and camera turn right
+        if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
+            controller.xRotationSpeed += (controller.xAc)
+        else:
+            if(controller.xRotationSpeed > 0):
+                controller.xRotationSpeed = max(controller.xRotationSpeed-controller.xAc, 0)
+
+        # A try to make the car and camera turn left
+        if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
+            controller.xRotationSpeed += (controller.xAc)
+        else:
+            if(controller.xRotationSpeed < 0):
+                controller.xRotationSpeed = min(controller.xRotationSpeed+controller.xAc, 0)
+
+        controller.zPosition += controller.zSpeed
+        controller.xRotation += controller.xRotationSpeed
+
+        # Clearing the screen in both, color and depth
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        model = tr.matmul([tr.translate(0,0,-controller.zPosition),tr.rotationY(controller.xRotation)])
         setView(texPipeline, axisPipeline, lightPipeline)
 
         if controller.showAxis:
@@ -673,12 +740,12 @@ if __name__ == "__main__":
             glUniformMatrix4fv(glGetUniformLocation(axisPipeline.shaderProgram, "model"), 1, GL_TRUE, tr.identity())
             axisPipeline.drawCall(gpuAxis, GL_LINES)
 
-        #NOTA: Aquí dibujas tu objeto de escena
+        # Here we draw the object scene
         glUseProgram(texPipeline.shaderProgram)
         sg.drawSceneGraphNode(dibujo, texPipeline, "model")
 
         glUseProgram(lightPipeline.shaderProgram)
-        sg.drawSceneGraphNode(car, lightPipeline, "model")
+        sg.drawSceneGraphNode(car, lightPipeline, "model", model)
 
         glUseProgram(texPipeline.shaderProgram)
         sg.drawSceneGraphNode(houses, texPipeline, "model")
@@ -693,6 +760,6 @@ if __name__ == "__main__":
     gpuAxis.clear()
     dibujo.clear()
     houses.clear()
+    walls.clear()
     
-
     glfw.terminate()
