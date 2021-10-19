@@ -25,16 +25,18 @@ class Controller:
     def __init__(self):
         self.fillPolygon = True
         self.showAxis = True
-        self.viewPos = np.array([2,0.8,8.3])   #initial position for the camera 
-        self.at = np.array([2,1,-1000000])
+        self.cameraTheta = np.pi/4
+        self.cameraRadius = 20
+        self.cameraPos = np.array([2,0.8,8.3])   #initial position for the camera 
+        self.viewPos = self.cameraPos
+        self.at = np.array([self.viewPos[0] + np.cos(self.cameraTheta) * self.cameraRadius,
+                        self.viewPos[1], 
+                        self.viewPos[2] + np.sin(self.cameraTheta) * self.cameraRadius])
         self.camUp = np.array([0, 1, 0])
         self.distance = 20
-        self.xRotation = 0   
-        self.zPosition = 0   #initial position for the car
-        self.xRotationSpeed = 0
-        self.zSpeed = 0   #initial speed for the car and camera
-        self.zAc = 0.00001   #acceleration and deceleration for the car and camera speed
-        self.xAc = np.pi/1000000   #acceleration and deceleration for the car and camera rotation 
+        self.position = 0
+        self.speed = 0
+        self.acc = 0.00001
 
 
 controller = Controller()
@@ -96,27 +98,7 @@ def on_key(window, key, scancode, action, mods):
 
     elif key == glfw.KEY_ESCAPE:
         glfw.set_window_should_close(window, True)
-    
-    #if we press W key, the car and the camera will go forward 
-    elif key == glfw.KEY_W:
-        controller.zSpeed += (controller.zAc)
-        controller.viewPos -= np.array([0,0,controller.zSpeed])
 
-    #if we press S key, the car and the camera will go back 
-    elif key == glfw.KEY_S:
-        controller.zSpeed -= (controller.zAc)
-        controller.viewPos -= np.array([0,0,controller.zSpeed])
-
-    #if we press D key, the car and the camera will turn right
-    elif key == glfw.KEY_D:
-        controller.xRotationSpeed += (controller.xAc)
-
-    #if we press A key, the car and the camera will turn left
-    elif key == glfw.KEY_A:
-        controller.xRotationSpeed -= (controller.xAc)
-
-    else:
-        print('Unknown key')
 
 def createOFFShape(pipeline, filename, r,g, b):
     shape = readOFF(getAssetPath(filename), (r, g, b))
@@ -679,14 +661,19 @@ if __name__ == "__main__":
     # glfw will swap buffers as soon as possible
     glfw.swap_interval(0)
 
-    while not glfw.window_should_close(window):
+    t0 = glfw.get_time()
 
-        # Measuring performance
-        perfMonitor.update(glfw.get_time())
-        glfw.set_window_title(window, title + str(perfMonitor))
+    projection = tr.perspective(60, float(width)/float(height), 0.1, 100)
+
+    while not glfw.window_should_close(window):
 
         # Using GLFW to check for input events
         glfw.poll_events() 
+
+        # Measuring performance
+        t1 = glfw.get_time()
+        dt = t1 - t0
+        t0 = t1
 
         # Filling or not the shapes depending on the controller state
         if (controller.fillPolygon):
@@ -696,61 +683,47 @@ if __name__ == "__main__":
 
         # Control the car and camera to move forward
         if glfw.get_key(window, glfw.KEY_W) == glfw.PRESS:
-            controller.zSpeed += (controller.zAc)
-            controller.viewPos[2] -= (controller.zSpeed)
-        else:
-            if(controller.zSpeed > 0):
-                controller.zSpeed = max(controller.zSpeed-controller.zAc, 0)
-                controller.viewPos[2] = max(controller.viewPos[2]-controller.zSpeed, 0)
-
+            controller.viewPos[0] += np.cos(controller.cameraTheta) * dt * 3 
+            controller.viewPos[2] += np.sin(controller.cameraTheta) * dt * 3
+                
         # Control the car an camera to move back
         if glfw.get_key(window, glfw.KEY_S) == glfw.PRESS:
-            controller.zSpeed -= (controller.zAc)
-            controller.viewPos[2] -= (controller.zSpeed)
-        else:
-            if(controller.zSpeed < 0):
-                controller.zSpeed = min(controller.zSpeed+controller.zAc, 0)
-                controller.viewPos[2] = max(controller.viewPos[2]-controller.zSpeed, 0)
+            controller.viewPos[0] -= np.cos(controller.cameraTheta) * dt * 3
+            controller.viewPos[2] -= np.sin(controller.cameraTheta) * dt * 3
 
         # A try to make the car and camera turn right
         if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
-            controller.xRotationSpeed += (controller.xAc)
-        else:
-            if(controller.xRotationSpeed > 0):
-                controller.xRotationSpeed = max(controller.xRotationSpeed-controller.xAc, 0)
+            controller.cameraTheta += 2 * dt
 
         # A try to make the car and camera turn left
         if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
-            controller.xRotationSpeed += (controller.xAc)
-        else:
-            if(controller.xRotationSpeed < 0):
-                controller.xRotationSpeed = min(controller.xRotationSpeed+controller.xAc, 0)
-
-        controller.zPosition += controller.zSpeed
-        controller.xRotation += controller.xRotationSpeed
+            controller.cameraTheta -= 2 * dt
 
         # Clearing the screen in both, color and depth
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-        # Transformation for car movement
-        model = tr.matmul([tr.translate(0,0,-controller.zPosition),tr.rotationY(controller.xRotation)])
         setView(texPipeline, axisPipeline, lightPipeline)
 
+        model = tr.matmul([tr.translate(controller.viewPos[0]-2,0,controller.viewPos[2]-8)])
+                            
         if controller.showAxis:
             glUseProgram(axisPipeline.shaderProgram)
             glUniformMatrix4fv(glGetUniformLocation(axisPipeline.shaderProgram, "model"), 1, GL_TRUE, tr.identity())
             axisPipeline.drawCall(gpuAxis, GL_LINES)
 
+        controller.at = np.array([controller.viewPos[0] + np.cos(controller.cameraTheta) * controller.cameraRadius,
+                        controller.viewPos[1], 
+                        controller.viewPos[2] + np.sin(controller.cameraTheta) * controller.cameraRadius])
+
         # Here we draw the object scene
         glUseProgram(texPipeline.shaderProgram)
         sg.drawSceneGraphNode(dibujo, texPipeline, "model")
-        sg.drawSceneGraphNode(houses, texPipeline, "model")
-        sg.drawSceneGraphNode(walls, texPipeline, "model")
+        sg.drawSceneGraphNode(houses, texPipeline, "model") 
+        sg.drawSceneGraphNode(walls, texPipeline, "model") 
 
         glUseProgram(lightPipeline.shaderProgram)
-        sg.drawSceneGraphNode(car, lightPipeline, "model", model)
-
-
+        sg.drawSceneGraphNode(car, lightPipeline, "model",model)
+        
         # Once the render is done, buffers are swapped, showing only the complete scene.
         glfw.swap_buffers(window)
 
